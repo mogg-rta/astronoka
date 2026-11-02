@@ -1,0 +1,562 @@
+<title>アストロノーカ RTA ルート</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap">
+<style>
+/* 畑ゲームの手帳：日付はドット文字、日ごとのカードを縦に。月の切り替えは上に固定 */
+:root {
+  --bg: #eef3ea;        /* 若葉の地 */
+  --card: #fbfdf9;
+  --ink: #1f2a1f;
+  --muted: #5d6b5c;
+  --line: #d3ddcd;
+  --accent: #2c55a8;    /* スペースバスの青 */
+  --soil: #7b3b27;      /* 畑の土 */
+  --gold: #a87a12;
+  --chip: #e3ebde;
+  --font-dot: "DotGothic16", "Hiragino Kaku Gothic ProN", "Yu Gothic", monospace;
+  --font-body: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic UI", "Meiryo", "Noto Sans JP", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141a15; --card: #1c241d; --ink: #e6eee3; --muted: #9aa897; --line: #2f3a30;
+    --accent: #8fb2ff; --soil: #e39b7f; --gold: #e2c06a; --chip: #263027; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141a15; --card: #1c241d; --ink: #e6eee3; --muted: #9aa897; --line: #2f3a30;
+  --accent: #8fb2ff; --soil: #e39b7f; --gold: #e2c06a; --chip: #263027; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.6; }
+.wrap { max-width: 720px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 64px; }
+h1 { font-family: var(--font-dot); font-weight: 400; font-size: 1.6rem; margin: 0; text-wrap: balance; letter-spacing: .02em; }
+.lead { color: var(--muted); margin: 6px 0 0; font-size: .9rem; }
+.main-mark { display: inline-block; background: var(--accent); color: var(--bg); border-radius: 999px; padding: 1px 12px; font-size: .8rem; letter-spacing: .04em; }
+h2 { font-family: var(--font-dot); font-weight: 400; font-size: 1.15rem; margin: 0 0 10px; }
+section { margin-top: 28px; }
+
+/* マイルストーン：日付・できていること・その日の終わりの所持金 */
+.mss { list-style: none; margin: 0; padding: 0; background: var(--card); border: 1px solid var(--line); border-radius: 10px; }
+.ms { display: grid; grid-template-columns: 5.6rem 1fr auto; gap: 2px 12px; align-items: baseline; padding: 8px 14px; border-top: 1px solid var(--line); }
+.ms:first-child { border-top: 0; }
+.ms .d { font-family: var(--font-dot); color: var(--accent); font-size: 1rem; }
+.ms .w { min-width: 0; font-size: .92rem; }
+.ms .chk { text-align: right; font-size: .8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ms.yr { background: var(--chip); font-family: var(--font-dot); font-size: .9rem; color: var(--muted); padding-block: 4px; display: block; }
+@media (max-width: 480px) { .ms { grid-template-columns: 5.6rem 1fr; } .ms .chk { grid-column: 2; text-align: left; } }
+
+.rules { display: grid; gap: 8px; }
+.rule { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+.rule b { font-weight: 700; }
+.rule p { margin: 4px 0 0; font-size: .9rem; color: var(--muted); }
+
+/* 上に固定する切り替え */
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 10px; margin-top: 28px;
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: center; border-bottom: 1px solid var(--line); }
+.bar button { font: inherit; font-size: .85rem; border: 1px solid var(--line); background: var(--card); color: var(--ink);
+  border-radius: 999px; padding: 4px 11px; cursor: pointer; }
+.bar button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.bar .yl { font-family: var(--font-dot); font-size: .85rem; color: var(--muted); margin-left: 4px; }
+.bar .sp { flex: 1; }
+.bar button:focus-visible, .day:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* 日のカード */
+.days { display: grid; gap: 10px; margin-top: 14px; }
+.day { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; grid-template-columns: 4.6rem 1fr; gap: 4px 12px; }
+.day .date { font-family: var(--font-dot); font-size: 1.25rem; line-height: 1.2; }
+.day .dow { font-family: var(--font-dot); font-size: .85rem; color: var(--muted); }
+.day .dow.sun { color: var(--soil); }
+.day .main { min-width: 0; }
+.tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.tag { font-size: .72rem; letter-spacing: .04em; padding: 1px 8px; border-radius: 999px; background: var(--chip); color: var(--ink); }
+.tag.go { background: var(--accent); color: var(--bg); }
+.tag.up { background: var(--gold); color: var(--bg); }
+.tag.trap { background: var(--soil); color: var(--bg); }
+.tag.save { background: transparent; color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.acts li.save { color: var(--accent); font-weight: 700; list-style: "▶ "; }
+.acts { margin: 6px 0 0; padding-left: 1.1em; }
+.acts li { margin: 2px 0; }
+.acts li.trap { color: var(--soil); }
+.acts li.note { color: var(--muted); font-size: .88rem; list-style: "※ "; }
+/* 同じ種類の手順をまとめた行：左に種類、右に中身 */
+.acts li.grp { list-style: none; margin-left: -1.1em; display: grid; grid-template-columns: 3.6em 1fr; gap: 0 8px; }
+.acts .lab { color: var(--muted); font-size: .8rem; padding-top: 2px; }
+.acts .when { color: var(--muted); font-size: .85rem; }
+.acts ol.xs { margin: 0; padding-left: 1.3em; }
+.acts ol.xs li { margin: 1px 0; }
+.acts .sub { color: var(--muted); font-size: .85rem; }
+/* 罠の配置図（9×9。上が畑の側） */
+.tg { display: grid; grid-template-columns: repeat(9, 1.7em); gap: 2px; margin: 6px 0 2px; font-size: .7rem; }
+.tg span { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; background: var(--chip); border-radius: 3px; color: var(--muted); }
+.tg span.gate { background: var(--line); }
+.tg span.it { background: var(--soil); color: var(--bg); }
+.tgcap { font-size: .75rem; color: var(--muted); }
+.traps { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(16em, 1fr)); }
+.trapcard { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+.trapcard h3 { font-size: .95rem; margin: 0; font-weight: 600; }
+.trapcard p { margin: 4px 0 0; font-size: .82rem; color: var(--muted); }
+.money { grid-column: 2; font-size: .8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.hint { display: none; color: var(--muted); font-size: .85rem; margin-top: 6px; }
+
+/* 覚えるとき：中身を隠す。タップで開く */
+body.quiz .day:not(.open) .acts, body.quiz .day:not(.open) .money { display: none; }
+body.quiz .day:not(.open) .hint { display: block; }
+body.quiz .day { cursor: pointer; }
+.month-h { font-family: var(--font-dot); font-size: 1.05rem; color: var(--muted); margin: 14px 0 -2px; }
+.foot { margin-top: 32px; font-size: .82rem; color: var(--muted); }
+@media (prefers-reduced-motion: no-preference) { .day { transition: border-color .15s; } .day:hover { border-color: var(--accent); } }
+
+/* マイルストーンは区間と目標を折り返さない */
+.ms { grid-template-columns: 7.6rem 11.5rem 1fr; }
+.ms .d, .ms .w { white-space: nowrap; }
+.ms .chk { text-align: left; }
+/* 振り返り（公開用） */
+.rv-time { font-family: var(--font-dot); font-size: 2.6rem; line-height: 1.2; color: var(--accent); margin: 0; }
+.rv-sub { color: var(--muted); margin: 0; }
+.rv-tbl { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); font-size: .9rem; }
+.rv-tbl th, .rv-tbl td { border-bottom: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
+.rv-tbl th { background: var(--chip); color: var(--muted); font-weight: 400; font-size: .8rem; }
+.rv-tbl .d { font-family: var(--font-dot); color: var(--accent); white-space: nowrap; }
+.rv-tbl .n { white-space: nowrap; text-align: right; }
+.rv h3 { font-size: 1rem; margin: 14px 0 6px; font-weight: 600; }
+.rv-est { background: var(--chip); border-radius: 8px; padding: 8px 12px; margin: 10px 0 0; font-size: .9rem; }
+.rv-foot { color: var(--muted); font-size: .85rem; }
+</style>
+<style>
+.lead.alt-mark { background: var(--soil); }
+.cmp { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); border-radius: 10px; font-size: .88rem; font-variant-numeric: tabular-nums; }
+.cmp th, .cmp td { padding: 6px 10px; border-top: 1px solid var(--line); text-align: left; vertical-align: baseline; }
+.cmp thead th { border-top: 0; color: var(--muted); font-weight: 400; font-size: .8rem; }
+.cmp td.n { text-align: right; white-space: nowrap; }
+.tablewrap { overflow-x: auto; }
+.memo { margin: 6px 0 0; padding-left: 1.2em; }
+.nos { color: var(--soil); font-weight: 700; }
+.acts .pc { color: var(--soil); font-size: .82rem; line-height: 1.45; margin: 1px 0 3px; }
+.recipes { position: fixed; z-index: 20; right: max(16px, env(safe-area-inset-right, 0px)); top: calc(16px + env(safe-area-inset-top, 0px)); width: 300px; max-height: calc(100vh - 32px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); overflow: auto; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: .82rem; line-height: 1.5; box-shadow: 0 2px 10px rgba(0,0,0,.08); }
+.recipes h2 { font-size: 1rem; margin: 0 0 6px; }
+.recipes ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
+.recipes b { font-weight: 600; }
+.recipes .rd { color: var(--muted); font-size: .72rem; margin-left: 6px; white-space: nowrap; }
+.recipes h2.tt { margin-top: 14px; }
+.recipes .lad { margin: 0 0 6px; font-size: .78rem; line-height: 1.5; }
+.recipes .lad .lk { font-weight: 600; }
+.recipes .lad .lu { color: var(--muted); font-size: .72rem; }
+#rcpbtn { display: none; }
+.acts li.em { font-weight: 700; }
+.acts .st { color: var(--muted); font-size: .85rem; line-height: 1.45; margin: 1px 0 1px .3em; }
+@media (max-width: 1359px) {
+  .recipes { display: none; top: auto; bottom: calc(64px + env(safe-area-inset-bottom, 0px)); max-height: 60vh; width: min(340px, calc(100vw - 32px)); }
+  .recipes.open { display: block; }
+  #rcpbtn { display: block; position: fixed; z-index: 21; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--accent); color: var(--bg); border: 0; border-radius: 999px; padding: 8px 16px; font: inherit; font-size: .85rem; cursor: pointer; }
+}
+/* 左に固定：1年 2/21〜の罠の切り替え（風船が突破されたあとの3つ。走者 10/25） */
+.trapside { position: fixed; z-index: 20; left: max(16px, env(safe-area-inset-left, 0px)); top: calc(16px + env(safe-area-inset-top, 0px)); width: 300px; max-height: calc(100vh - 32px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); overflow: auto; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: .82rem; line-height: 1.5; box-shadow: 0 2px 10px rgba(0,0,0,.08); }
+.trapside h2 { font-size: 1rem; margin: 0 0 2px; }
+.trapside .lead2 { color: var(--muted); font-size: .75rem; margin: 0 0 6px; }
+.trapside h3 { font-size: .88rem; margin: 10px 0 0; }
+.trapside h3 .no { color: var(--soil); margin-right: 4px; }
+.trapside .when { color: var(--muted); font-size: .75rem; margin: 0; }
+#trapbtn { display: none; }
+@media (max-width: 1359px) {
+  .trapside { display: none; top: auto; bottom: calc(64px + env(safe-area-inset-bottom, 0px)); max-height: 60vh; width: min(340px, calc(100vw - 32px)); }
+  .trapside.open { display: block; }
+  #trapbtn { display: block; position: fixed; z-index: 21; left: max(16px, env(safe-area-inset-left, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--accent); color: var(--bg); border: 0; border-radius: 999px; padding: 8px 16px; font: inherit; font-size: .85rem; cursor: pointer; }
+}
+</style>
+<aside class="recipes" id="recipes" aria-label="交配の組み合わせ"><h2>交配の組み合わせ</h2><ol>
+      <li><b>平凡レンコン</b> ← シマイモ × 星カブ<span class="rd">1年 2/15</span></li>
+      <li><b>コスモニンジン</b> ← シマイモ × 平凡レンコン<span class="rd">1年 2/22</span></li>
+      <li><b>電灯キューリ</b> ← 穴ホウレン草 × シマイモ<span class="rd">1年 4/1</span></li>
+      <li><b>カリフラボール</b> ← 電灯キューリ × 平凡レンコン<span class="rd">1年 4/1</span></li>
+      <li><b>ロウソクコーン</b> ← 穴ホウレン草 × コスモニンジン<span class="rd">1年 4/1</span></li>
+      <li><b>火星カボチャ</b> ← ロウソクコーン × カリフラボール<span class="rd">1年 4/1</span></li>
+      <li><b>砲丸ピーチ</b> ← カリフラボール × 火星カボチャ<span class="rd">1年 4/1</span></li>
+      <li><b>宇宙マメ</b> ← 火星カボチャ × ロウソクコーン<span class="rd">1年 4/7</span></li>
+      <li><b>トゲガーリック</b> ← 砲丸ピーチ × 宇宙マメ<span class="rd">1年 4/7</span></li>
+      <li><b>ホタル唐辛子</b> ← カリフラボール × 宇宙マメ<span class="rd">1年 4/7</span></li>
+      <li><b>スイカタワー</b> ← ホタル唐辛子 × トゲガーリック<span class="rd">1年 4/7</span></li>
+      <li><b>イチゴブドウ</b> ← 砲丸ピーチ × ロウソクコーン<span class="rd">1年 4/7</span></li>
+      <li><b>真空ワカメ</b> ← 火星カボチャ × イチゴブドウ<span class="rd">1年 4/7</span></li>
+      <li><b>月面コンブ</b> ← イチゴブドウ × トゲガーリック<span class="rd">1年 4/7</span></li>
+      <li><b>冥王マツタケ</b> ← 月面コンブ × スイカタワー<span class="rd">1年 4/7</span></li>
+      <li><b>透明キャベツ</b> ← 電灯キューリ × シマイモ<span class="rd">1年 4/7</span></li>
+      <li><b>土星ナス</b> ← 穴ホウレン草 × 星カブ<span class="rd">1年 5/1</span></li>
+      <li><b>ウキウキパセリ</b> ← 電灯キューリ × 星カブ<span class="rd">2年 1/1</span></li>
+      <li><b>銀河ドリアン</b> ← コンブ × 冥王マツタケ<span class="rd">2年 2/1</span></li>
+      <li><b>カブトタケノコ</b> ← 火星カボチャ × トゲガーリック<span class="rd">2年 2/1</span></li>
+      <li><b>貴婦人</b> ← 銀河ドリアン × コンブ<span class="rd">2年 2/1</span></li>
+      <li><b>水晶ハーブ</b> ← 貴婦人 × 銀河ドリアン<span class="rd">2年 3/7</span></li>
+      <li><b>アストロキング</b> ← 水晶ハーブ × 貴婦人<span class="rd">2年 3/7</span></li>
+    </ol>
+    <h2 class="tt">称号の並び（下から上へ）</h2>
+      <p class="lad"><span class="lk">重さ（マイナス）</span>：やや軽 → 軽量 → スカスカ → かるがる → ストロー級 → 超軽量 → ほとんど空気</p>
+      <p class="lad"><span class="lk">模様</span>：面白模様 → ゆかいな模様 → 爆笑模様 → 珍奇模様 → ふしぎ模様 → アートな模様 → 稀少模様 → 勇者の模様</p>
+      <p class="lad"><span class="lk">糖度</span>：やや甘 → それなり甘い → 甘味 → あまあま → 上質甘味 → うっとり甘味 → 極上甘味 → あまあまあま</p>
+      <p class="lad"><span class="lk">栄養</span>：ビタミン豊富 → 栄養たっぷり → 健康になる → 解毒作用</p>
+      <p class="lad"><span class="lk">風味</span>：まあまあ → 良好風味 → うま味 → ほのかな滋味 → デリシャス → 絶妙かくし味 → うまうま → トレビアーン</p>
+      <p class="lad"><span class="lk">形状</span>：面白形状 → 陽気な形 → 珍しい形 → きれいな形 → ふしぎな形 → アートな形 → 稀少形状 → 魅惑の形状</p>
+  </aside>
+<button id="rcpbtn" type="button" aria-controls="recipes" aria-expanded="false">組み合わせ</button>
+<aside class="trapside" id="trapside" aria-label="1年目 2/21 からの罠の切り替え"></aside>
+<button id="trapbtn" type="button" aria-controls="trapside" aria-expanded="false">罠</button>
+
+<div class="wrap">
+  <header>
+    <h1>アストロノーカ RTA ルート</h1>
+    <!-- 序文はルートの要点の箇条書き（走者 10/29） -->
+    <ul class="lead memo">
+      <li>目標は通し 2:35:00。</li>
+      <li>1年目 2/21 まではノー交配ルートを採用し、ピート・セカンドの交配はほぼ0とする。</li>
+      <li>属性上げには余裕を持った種数を用意して進める。</li>
+      <li>ゴールデン強化種を、1年目 6/15〜6/28、2年目 1/7〜1/27 と 3/7 のあとに狙う。</li>
+    </ul>
+  </header>
+
+  <section>
+    <h2>マイルストーン（目標タイムと、区間ごとにやること）</h2>
+    <ol class="mss">
+      <li class="ms"><span class="d">1年 1/1 → 2/1</span><span class="w">通し 9:30（区間 9:30）</span><span class="chk">星カブで稼ぐ。1/28 にピート・セカンドと交配マシン（ご隠居）</span></li>
+      <li class="ms"><span class="d">2/1 → 4/1</span><span class="w">通し 37:00（区間 27:30）</span><span class="chk">2/15 からこんにゃく犬さん式（川流し＋平凡すばらしい）でコンクール野菜を用意<br>3月末までに、超軽量シマイモ・爆笑模様レンコン</span></li>
+      <li class="ms"><span class="d">4/1 → 5/1</span><span class="w">通し 59:00（区間 22:00）</span><span class="chk">冥王マツタケまでの交配<br>4月末までに、勇者模様マツタケ・甘味キャベツ</span></li>
+      <li class="ms"><span class="d">5/1 → 2年 1/1</span><span class="w">通し 1:24:00（区間 25:00）</span><span class="chk">トレビアーン月面コンブ、魅惑の形状真空ワカメ、極上甘味キャベツ＋ゴールデン強化種待機</span></li>
+      <li class="ms"><span class="d">2年 1/1 → 2/1</span><span class="w">通し 1:40:00（区間 16:00）</span><span class="chk">ピート・交配マシンをファイナルへ＋ゴールデン強化種待機</span></li>
+      <li class="ms"><span class="d">2/1 → 3/7</span><span class="w">通し 2:04:00（区間 24:00）</span><span class="chk">貴婦人（形状・風味）<br>土星ナス・銀河ドリアン（健康になる）<br>カブトタケノコ（ほとんど空気）<br>スイカタワー（あまあまあま）<br>を作り、アストロキング完成</span></li>
+      <li class="ms"><span class="d">3/7 → クリア</span><span class="w">通し 2:35:00（区間 31:00）</span><span class="chk">ゴールデン強化種を待機 → ゴールデンアストロキングで勝利</span></li>
+    </ol>
+    <ol id="mss" hidden></ol>
+  </section>
+
+  <nav class="bar" aria-label="表示の切り替え" id="bar">
+    <button type="button" data-m="" aria-pressed="true">全部</button>
+  </nav>
+
+  <div id="days" class="days" aria-live="polite"></div>
+
+  <section class="rv">
+    <h2>2026/11/1 の記録について</h2>
+    <p class="rv-time">2:35:30</p>
+    <p class="rv-sub">走者 mogg ／ PS3 ゲームアーカイブス版 ／ 先行記録 2:38:59 から 3分29秒 短縮</p>
+  </section>
+
+  <section class="rv">
+    <h2>このチャートの改善点</h2>
+    <table class="rv-tbl">
+      <tr><th>改善</th><th>内容</th><th>狙い</th></tr>
+      <tr><td>1年 2/21 まで交配をほぼ0にする</td><td>この時期の交配は 2/15 の平凡レンコンだけにする。本格的な交配は 2/22 から始める</td><td>ピート・セカンドの嘘を避ける。風船が入るまでは、畑を抜かれてもよい期間にする</td></tr>
+      <tr><td>属性上げの手順を統一する</td><td>1段階目●6 → 2段階目●0 → 2段階目●8。各段階で種を 1 → 3 → 9 個に増やしてから上げる</td><td>保険にする。嘘をつかれても立て直しが安定する</td></tr>
+      <tr><td>ゴールデン強化種と最小点数のアストロキングを用意する</td><td>加算点 200 を使い、属性は勝てる最小の点数まで上げる</td><td>資金と交配数を最適化する</td></tr>
+    </table>
+    <h3>ゴールデン強化種を狙う期間</h3>
+    <table class="rv-tbl">
+      <tr><th>時期</th><th>長さ</th><th>落ちる見込み</th></tr>
+      <tr><td class="d">1年 6/15〜6/28</td><td>2週間</td><td class="n">約23%</td></tr>
+      <tr><td class="d">2年 1/7〜1/27</td><td>3週間</td><td class="n">約33%</td></tr>
+      <tr><td class="d">2年 3/7〜6/13</td><td>約3か月</td><td class="n">約83%</td></tr>
+      <tr><td>通算</td><td></td><td class="n">約91%</td></tr>
+    </table>
+    <p class="rv-foot">実測の率 2.0%（1匹あたり）と、1日 0.94匹で計算した見込み。</p>
+  </section>
+
+  <section class="rv">
+    <h2>走って出た課題と対応</h2>
+    <table class="rv-tbl">
+      <tr><th>課題</th><th>対応</th></tr>
+      <tr><td>2/15 までに罠を突破されることが多い</td><td>序盤を星カブだけにして、突破されても崩れない形にした</td></tr>
+      <tr><td>風船を迂回されることがある</td><td>風船だけで1年目を通すのが理想だが、頻繁に突破されて崩される。そのため、迂回された場合の罠の順番を事前に決めておくことで対応する</td></tr>
+      <tr><td>ピートに嘘をつかれる</td><td>交配ごとの対応をチャートに書いておく</td></tr>
+    </table>
+  </section>
+
+<section class="rv">
+    <h2>今回のミスと運</h2>
+    <h3>ミス（操作がうまければ縮む時間）</h3>
+    <table class="rv-tbl">
+      <tr><th>日</th><th>起きたこと</th><th>時間</th></tr>
+      <tr><td class="d">1年 4/7</td><td>交配の操作に無駄があった</td><td class="n">約1:00</td></tr>
+      <tr><td class="d">1年 5/1</td><td>キャベツの強化種の予言を見送った</td><td class="n">約0:28</td></tr>
+      <tr><td class="d">2年 1/28</td><td>バスの行き先を押し間違えた</td><td class="n">約0:10</td></tr>
+      <tr><td class="d">2年 2/1</td><td>罠の電力が足りず、置き直した</td><td class="n">約0:08</td></tr>
+      <tr><td class="d">2年 2/1</td><td>ドリアンの親を選ぶのに迷った</td><td class="n">約0:08</td></tr>
+    </table>
+    <h3>運（良ければ縮む時間）</h3>
+    <table class="rv-tbl">
+      <tr><th>日</th><th>起きたこと</th><th>時間</th></tr>
+      <tr><td class="d">1年 5/1</td><td>土星ナスの栄養を1段階目●6 にするのに苦戦した。途中で嘘が出て、+85 から +55 に下がった</td><td class="n">約1:45</td></tr>
+      <tr><td class="d">1年 5/13</td><td>夜に風船を迂回で突破され、5/14 に川流しへ組み直した。理想は、風船だけで1年目を乗り切ること</td><td class="n">約1:00</td></tr>
+      <tr><td class="d">2年 4/27</td><td>ゴールデンが遅く落ちた。3/7 までに出ていた場合</td><td class="n">約2:40〜4:40</td></tr>
+    </table>
+    <p class="rv-est">ミスがなければ目標の 2:35:00 は切れていた。また、運も良ければ 2:30:00 を切れる可能性もある。</p>
+  </section>
+
+  <section class="rv">
+    <h2>改善案</h2>
+    <table class="rv-tbl">
+      <tr><th>案</th><th>内容</th></tr>
+      <tr><td>交配マシン・ファイナルを買わない</td><td>4号で止めて、50,000z を浮かせる</td></tr>
+      <tr><td>作物の数を最適化する</td><td>浮いた分、稼ぐために育てる作物を減らす</td></tr>
+    </table>
+    <p class="rv-foot">どちらも効果はまだ計算していない。</p>
+  </section>
+
+  <section class="rv">
+    <h2>謝辞</h2>
+    <p>こんにゃく犬さん、えぐ味さんの走りと解説から多くを学びました。</p>
+    <p class="rv-foot">ゲームの操作に AI は一切使っていません。研究では、録画の解析、ルートの計算、資料の作成に AI（Claude）を使いました。</p>
+  </section>
+
+  <section>
+    <h2>付録：過去の走者との比べ</h2>
+    <div class="tablewrap"><table class="cmp">
+      <thead><tr><th>時点（通し）</th><th>目標</th><th>こんにゃく犬さん</th><th>えぐ味さん</th></tr></thead>
+      <tbody>
+        <tr><th>1年 2/1</th><td class="n">9:30</td><td class="n">10:32</td><td class="n">9:41</td></tr>
+        <tr><th>4/1</th><td class="n">37:00</td><td class="n">40:17</td><td class="n">36:53</td></tr>
+        <tr><th>5/1</th><td class="n">59:00</td><td class="n">1:05:29</td><td class="n">54:41</td></tr>
+        <tr><th>2年 1/1</th><td class="n">1:24:00</td><td class="n">1:31:41</td><td class="n">1:47:36</td></tr>
+        <tr><th>2年 2/1</th><td class="n">1:40:00</td><td class="n">1:51:53</td><td class="n">2:15:24</td></tr>
+        <tr><th>2年 3/7（こんにゃく犬さんは 3/8 の画面）</th><td class="n">2:04:00</td><td class="n">2:13:11</td><td class="n">—</td></tr>
+        <tr><th>2年 5/28（2人は5月の終わり）</th><td class="n">2:24:00</td><td class="n">2:32:41</td><td class="n">2:45:36</td></tr>
+        <tr><th>クリア</th><td class="n">2:35:00</td><td class="n">2:38:59</td><td class="n">2:52:23</td></tr>
+        <tr><th>アストロキング</th><td>合計 1780、ゴールデン（今回は 953点）</td><td>合計 1980、すばらしい（955点）</td><td>合計 1835、ゴールデン</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+</div>
+
+<script>
+{ const b = document.getElementById("rcpbtn"), p = document.getElementById("recipes");
+  b.addEventListener("click", () => { const o = p.classList.toggle("open"); b.setAttribute("aria-expanded", String(o)); }); }
+// 日ごとの手順。y: 年、mo: 月、t: 罠、n: 注意、m: その日の終わりの所持金（計算の値）
+const DAYS = [{"y":1,"mo":1,"d":"1/1","w":"月","tags":["畑"],"a":["買う（180z）：シマイモ×2、星カブ×1","植える 星カブ×1（完全成熟で 1/4(木)）","植える シマイモ×5（完全成熟で 1/4(木)）"],"m":20},
+{"y":1,"mo":1,"d":"1/4","w":"木","tags":["畑"],"a":["収穫 星カブ×1（種 +3）","収穫 シマイモ×5（種 +15）","植える 星カブ×3（完全成熟で 1/7(日)）","植える シマイモ×3（完全成熟で 1/7(日)）"],"m":20},
+{"y":1,"mo":1,"d":"1/7","w":"日","tags":["畑"],"a":["収穫 星カブ×3（種 +9）","収穫 シマイモ×3（種 +9）","植える 星カブ×6（完全成熟で 1/10(水)）"],"m":20},
+{"y":1,"mo":1,"d":"1/8","w":"月","tags":["罠"],"a":[{"t":"ピートの初期配置のまま"},{"e":"トラップ戦は■ボタン2回でカメラを真上からにする（1晩 約0.5〜0.7秒縮む）"}],"m":20},
+{"y":1,"mo":1,"d":"1/10","w":"水","tags":["畑","売る","罠"],"a":["収穫 星カブ×6（種 +18）","植える 星カブ×6（完全成熟で 1/13(土)）","野菜を全部売る（罠は売らない）","買う（2,000z）：カカシ2体",{"t":"罠を全部回収して（売らない）、カカシ3体を置く","g":"K3"}],"m":140},
+{"y":1,"mo":1,"d":"1/13","w":"土","tags":["畑"],"a":[{"e":"アストロネットを確認（1/28 に交配マシンをもらうため）"},"収穫 星カブ×6（種 +18）","植える 星カブ×6（完全成熟で 1/16(火)）"],"m":140},
+{"y":1,"mo":1,"d":"1/16","w":"火","tags":["畑"],"a":["収穫 星カブ×6（種 +18）","植える 星カブ×6（完全成熟で 1/19(金)）"],"m":140},
+{"y":1,"mo":1,"d":"1/19","w":"金","tags":["畑"],"a":["収穫 星カブ×6（種 +18）","植える 星カブ×6（完全成熟で 1/22(月)）"],"m":140},
+{"y":1,"mo":1,"d":"1/22","w":"月","tags":["畑"],"a":["収穫 星カブ×6（種 +18）","植える 星カブ×6（成熟で 1/24(水)）"],"m":140},
+{"y":1,"mo":1,"d":"1/24","w":"水","tags":["畑"],"a":["収穫 星カブ×6（成熟、種なし）","植える 星カブ×6（成熟で 1/26(金)）"],"m":140},
+{"y":1,"mo":1,"d":"1/26","w":"金","tags":["畑"],"a":["収穫 星カブ×6（成熟、種なし）","植える 星カブ×6（成熟で 1/28(日)）"],"m":140},
+{"y":1,"mo":1,"d":"1/28","w":"日","tags":["畑","外出","売る","改造"],"a":["収穫 星カブ×6（成熟、種なし）","植える 星カブ×6（完全成熟で 2/3(水)）","野菜を全部売る","改造 ピート・セカンド（3,000z）","外出 テンガロン村：ご隠居から交配マシン（300z）"],"m":2720},
+{"y":1,"mo":2,"d":"2/3","w":"水","tags":["畑","罠"],"a":[{"t":"カカシ3体のまま（2/15 まで）。突破されても直さない。かじられるのは星カブだけ"},"収穫 星カブ×6（種 +18）","植える 星カブ×6（完全成熟で 2/6(土)）"],"m":2720},
+{"y":1,"mo":2,"d":"2/6","w":"土","tags":["畑"],"a":["収穫 星カブ×6（種 +18）","植える 星カブ×6（完全成熟で 2/9(火)）"],"m":2720},
+{"y":1,"mo":2,"d":"2/9","w":"火","tags":["畑"],"a":["収穫 星カブ×6（種 +18）","植える 星カブ×6（完全成熟で 2/15(月)）",{"n":"突破されていなければ：この星カブは 2/15 に取る（2/12 は畑を開かない）"}],"m":2720},
+{"y":1,"mo":2,"d":"2/12","w":"金","tags":[],"a":[{"n":"突破されていたら：畑を開く（2/12 の夜も突破されたら 2/13）。2/9 の星カブを取り、星カブ6株を植え直す（2/15 に取る）"}],"m":2720},
+{"y":1,"mo":2,"d":"2/15","w":"月","tags":["畑","交配","罠"],"a":[{"t":"罠を買ったら、川流し（こんにゃく犬さんの形、カカシ3体）にする","g":"KR"},"収穫 星カブ×6（種 +18）","買う（1,480z）：2マス扇風機2台、ジャンプ台1台、基本エサ1個、浅底落とし穴1個","目的 平凡レンコン×2¦シマイモ × 星カブ を交配","植える シマイモ×4（完全成熟で 2/18(木)）","植える 平凡レンコン×2（完全成熟で 2/18(木)）",{"n":"突破されていたら：罠を買うとき、カカシを1体買い足して3体にする（1,000z。川流しの芸術点のため）"}],"m":1240},
+{"y":1,"mo":2,"d":"2/18","w":"木","tags":["畑"],"a":["収穫 シマイモ×4（種 +12）","収穫 平凡レンコン×2（種 +6）","植える 平凡レンコン×4（完全成熟で 2/22(月)）","植える シマイモ×2（完全成熟で 2/22(月)）"],"m":1240},
+{"y":1,"mo":2,"d":"2/21","w":"日","tags":["外出","売る","改造","コンクール","罠"],"a":["出かける前に売る\n・野菜を全部（コンクールのシマイモ2つ・平凡レンコン1つは残す）\n・星カブの種75個\n・カカシ3体とぐるぐる台2台\n売ったあと合計 7,100z あればよい（サード 7,000z と風船 100z。2号の 3,000z はコンクールの賞金で払う）","コンクール 新人シマイモ：シマイモ","コンクール 初級腰かけレンコン：平凡レンコン","改造 ピート・サード（7,000z）","改造 交配マシン2号（3,000z）",{"e":"村で買う（100z）：風船サービス装置"},{"t":"帰ったら、風船にする","g":"B"}],"m":180},
+{"y":1,"mo":2,"d":"2/22","w":"月","tags":["畑","交配"],"a":["目的 コスモニンジン¦シマイモ × 平凡レンコン を交配","目的 軽量シマイモ（重さ 2段目●0）¦シマイモ を属性上げ（6回、相手 シマイモ×8）","目的 ゆかいな模様レンコン（模様 1段目●6）¦平凡レンコン を属性上げ（3回、相手 星カブ×4）","収穫 平凡レンコン×4（種 +12）","収穫 シマイモ×2（種 +6）","植える 軽量シマイモ（重さ 2段目●0）×1（完全成熟で 2/25(木)）","植える コスモニンジン×1（完全成熟で 2/28(日)）","植える ゆかいな模様レンコン（模様 1段目●6）×1（完全成熟で 2/25(木)）","植える 平凡レンコン×3（完全成熟で 2/25(木)）"],"m":180},
+{"y":1,"mo":2,"d":"2/25","w":"木","tags":["畑"],"a":["収穫 軽量シマイモ（重さ 2段目●0）×1（種 +3）","収穫 ゆかいな模様レンコン（模様 1段目●6）×1（種 +3）","収穫 平凡レンコン×3（種 +9）","植える 軽量シマイモ（重さ 2段目●0）×3（完全成熟で 2/28(日)）","植える ゆかいな模様レンコン（模様 1段目●6）×2（完全成熟で 2/28(日)）"],"m":180},
+{"y":1,"mo":2,"d":"2/28","w":"日","tags":["畑","交配"],"a":["収穫 コスモニンジン×1（種 +3）","収穫 軽量シマイモ（重さ 2段目●0）×3（種 +9）","収穫 ゆかいな模様レンコン（模様 1段目●6）×2（種 +6）","目的 超軽量シマイモ¦軽量シマイモ（重さ 2段目●0） を属性上げ（6回、相手 シマイモ×10）¦作っては掛ける：重さ強化種Lv-1（軽量シマイモから、見込み2個）","目的 爆笑模様レンコン（模様 2段目●0）¦ゆかいな模様レンコン（模様 1段目●6） を属性上げ（2回、相手 平凡レンコン×3）","植える 超軽量シマイモ×1（完全成熟で 3/6(土)）","植える 爆笑模様レンコン（模様 2段目●0）×1（完全成熟で 3/6(土)）","植える コスモニンジン×3（完全成熟で 3/6(土)）","植える 平凡レンコン×1（完全成熟で 3/6(土)）"],"m":180},
+{"y":1,"mo":3,"d":"3/6","w":"土","tags":["畑"],"a":["収穫 超軽量シマイモ×1（種 +3）","収穫 爆笑模様レンコン（模様 2段目●0）×1（種 +3）","収穫 コスモニンジン×3（種 +9）","収穫 平凡レンコン×1（種 +3）","植える 超軽量シマイモ×3（完全成熟で 3/9(火)）","植える 爆笑模様レンコン（模様 2段目●0）×2（完全成熟で 3/9(火)）","植える 平凡レンコン×1（完全成熟で 3/9(火)）"],"m":180},
+{"y":1,"mo":3,"d":"3/9","w":"火","tags":["畑"],"a":["収穫 超軽量シマイモ×3（種 +9）","収穫 爆笑模様レンコン（模様 2段目●0）×2（種 +6）","収穫 平凡レンコン×1（種 +3）","植える 超軽量シマイモ×6（完全成熟で 3/12(金)）"],"m":180},
+{"y":1,"mo":3,"d":"3/12","w":"金","tags":["畑"],"a":["収穫 超軽量シマイモ×6（種 +18）","植える 超軽量シマイモ×6（完全成熟で 3/15(月)）"],"m":180},
+{"y":1,"mo":3,"d":"3/15","w":"月","tags":["畑"],"a":["収穫 超軽量シマイモ×6（種 +18）","植える 超軽量シマイモ×6（完全成熟で 3/18(木)）"],"m":180},
+{"y":1,"mo":3,"d":"3/18","w":"木","tags":["畑"],"a":["収穫 超軽量シマイモ×6（種 +18）","植える 超軽量シマイモ×6（成熟で 3/20(土)）"],"m":180},
+{"y":1,"mo":3,"d":"3/20","w":"土","tags":["畑"],"a":["収穫 超軽量シマイモ×6（成熟、種なし）","植える 超軽量シマイモ×6（成熟で 3/22(月)）"],"m":180},
+{"y":1,"mo":3,"d":"3/21","w":"日","tags":["外出","コンクール"],"a":["コンクール 初級シマイモ：シマイモ"],"m":1580},
+{"y":1,"mo":3,"d":"3/22","w":"月","tags":["畑"],"a":["収穫 超軽量シマイモ×6（成熟、種なし）","植える 超軽量シマイモ×6（成熟で 3/24(水)）"],"m":1580},
+{"y":1,"mo":3,"d":"3/24","w":"水","tags":["畑"],"a":["収穫 超軽量シマイモ×6（成熟、種なし）","植える 超軽量シマイモ×6（成熟で 3/26(金)）"],"m":1580},
+{"y":1,"mo":3,"d":"3/26","w":"金","tags":["畑"],"a":["収穫 超軽量シマイモ×6（成熟、種なし）","植える 超軽量シマイモ×6（完全成熟で 4/1(月)）"],"m":1580},
+{"y":1,"mo":3,"d":"3/28","w":"日","tags":["外出","売る","改造"],"a":["出かける前に、野菜を全部売る","改造 畑2枚目（10,000z）","改造 交配マシン3号（10,000z）",{"n":"畑の超軽量シマイモ6株（3/26 に植えた分）は取らずに出かける。4/1 の交配のあと、植えると同時に取る"},{"n":"羽が15枚あれば：ふとん屋で風船サービス装置と交換し、トラップ屋でその風船を売って（5000z）パンチングマシン（6000z）を買う。置いてある風船はそのまま使い、迂回されたらパンチングマシンに替える"}],"m":16720},
+{"y":1,"mo":4,"d":"4/1","w":"月","tags":["セーブ","畑","交配"],"a":[{"s":"セーブする（チェックポイント 4/1。交配の前）"},"買う：穴ホウレン草×31、シマイモ×10以上（お金があるだけ）","目的 電灯キューリ×12¦穴ホウレン草 × シマイモ を交配｜嘘なら：もう1回（穴ホウレン草は多めに買ってある）","目的 カリフラボール×10¦電灯キューリ × 平凡レンコン を交配｜嘘なら：キューリを1個作り足して（穴ホウレン草 × シマイモ）もう1回","目的 ロウソクコーン×9¦穴ホウレン草 × コスモニンジン を交配｜嘘なら：コスモニンジンを1個作り足して（シマイモ × 平凡レンコン）もう1回","目的 火星カボチャ×6¦ロウソクコーン × カリフラボール を交配｜嘘なら：コーン（穴ホウレン草 × コスモニンジン）とカリフラ（キューリ × 平凡レンコン）を1個ずつ作り足してもう1回","目的 砲丸ピーチ×3¦カリフラボール × 火星カボチャ を交配｜嘘なら：カリフラとカボチャを1個ずつ作り足してもう1回（カボチャは コーン × カリフラ）","収穫 超軽量シマイモ×6（種 +18）","植える 超軽量シマイモ×3（完全成熟で 4/7(日)）","植える 砲丸ピーチ×3（完全成熟で 4/7(日)）","植える 火星カボチャ×3（完全成熟で 4/7(日)）","植える ロウソクコーン×3（完全成熟で 4/7(日)）"],"m":520},
+{"y":1,"mo":4,"d":"4/7","w":"日","tags":["畑","交配"],"a":["収穫 超軽量シマイモ×3（種 +9）","収穫 砲丸ピーチ×3（種 +9）","収穫 火星カボチャ×3（種 +9）","収穫 ロウソクコーン×3（種 +9）","目的 宇宙マメ×5¦火星カボチャ × ロウソクコーン を交配｜嘘なら：コーンを1個作り足して（4/1 の残りの穴ホウレン草 × コスモニンジン）もう1回。カボチャは余りがある","目的 トゲガーリック×4¦砲丸ピーチ × 宇宙マメ を交配｜嘘なら：マメを1個作り足して（カボチャ × コーン）もう1回。ピーチは余りが1個ある","目的 ホタル唐辛子¦カリフラボール × 宇宙マメ を交配｜嘘なら：カリフラ（キューリ × 平凡レンコン。キューリは 穴ホウレン草 × シマイモ）とマメを作り足してもう1回","目的 スイカタワー¦ホタル唐辛子 × トゲガーリック を交配｜嘘なら：唐辛子とガーリックを上の手順で作り直してもう1回","目的 イチゴブドウ×3¦砲丸ピーチ × ロウソクコーン を交配｜嘘なら：コーンを1個作り足してもう1回。ピーチが無ければ、予備に植えるピーチを使う","目的 真空ワカメ¦火星カボチャ × イチゴブドウ を交配｜嘘なら：イチゴを作り足してもう1回。種が足りなければ 4/13 に作る","目的 月面コンブ×2¦イチゴブドウ × トゲガーリック を交配｜嘘なら：予備に植えるガーリックを使ってもう1回。イチゴが足りなければ ピーチ × コーン","目的 稀少模様レンコン（模様 2段目●8）¦爆笑模様レンコン（模様 2段目●0） を属性上げ（6回、相手 ゆかいな模様レンコン（模様 1段目●6）×6）｜相手はゆかいな模様レンコン。足りなければ平凡レンコンかシマイモ｜嘘なら：爆笑模様レンコンの種からやり直す（爆笑模様の種は余っている）¦作っては掛ける：模様強化種Lv1（爆笑模様レンコンから、見込み2個）","目的 冥王マツタケ¦月面コンブ × スイカタワー を交配｜嘘なら：2個目のコンブと、作り直したスイカでもう1回（5/1 のコンブは 4/13 に作り直す）","目的 冥王マツタケ（模様 3段目●1以上）¦冥王マツタケ を属性上げ（1回、相手 稀少模様レンコン（模様 2段目●8））｜嘘なら：模様が上がらなかったら、稀少模様レンコンをもう1つ作って（爆笑模様から）もう1回","目的 透明キャベツ¦電灯キューリ × シマイモ を交配｜嘘なら：キューリを1個作り足して（穴ホウレン草 × シマイモ）もう1回","目的 キャベツ（それなり甘い●6）¦透明キャベツ を属性上げ（4回、相手 平凡レンコン×5）¦キャベツ（それなり甘い●6） を属性上げ（1回、相手 爆笑模様レンコン（模様 2段目●0）×2）","植える 平凡レンコン×3（完全成熟で 4/13(土)）","植える 冥王マツタケ（模様 3段目●1以上）×1（完全成熟で 4/13(土)）","植える 火星カボチャ×1（完全成熟で 4/13(土)）","植える トゲガーリック×1（完全成熟で 4/13(土)）","植える 砲丸ピーチ×1（完全成熟で 4/13(土)）","植える 真空ワカメ×1（完全成熟で 4/13(土)）","植える キャベツ（それなり甘い●6）×1（完全成熟で 4/13(土)）","植える ロウソクコーン×1（完全成熟で 4/13(土)）"],"m":520},
+{"y":1,"mo":4,"d":"4/13","w":"土","tags":["畑"],"a":["収穫 平凡レンコン×3（種 +9）","収穫 冥王マツタケ（模様 3段目●1以上）×1（種 +3）","収穫 火星カボチャ×1（種 +3）","収穫 トゲガーリック×1（種 +3）","収穫 砲丸ピーチ×1（種 +3）","収穫 真空ワカメ×1（種 +3）","収穫 キャベツ（それなり甘い●6）×1（種 +3）","収穫 ロウソクコーン×1（種 +3）","植える キャベツ（それなり甘い●6）×3（完全成熟で 4/19(金)）","植える 冥王マツタケ（模様 3段目●1以上）×3（完全成熟で 4/19(金)）","植える 超軽量シマイモ×6（完全成熟で 4/19(金)）"],"m":520},
+{"y":1,"mo":4,"d":"4/19","w":"金","tags":["畑","交配"],"a":["収穫 キャベツ（それなり甘い●6）×3（種 +9）","収穫 冥王マツタケ（模様 3段目●1以上）×3（種 +9）","収穫 超軽量シマイモ×6（種 +18）","目的 キャベツ（甘味・糖度 +100）¦キャベツ（それなり甘い●6） を属性上げ（3回、相手 キャベツ（それなり甘い●6）×3）","植える キャベツ（甘味・糖度 +100）×1（完全成熟で 4/22(月)）","植える 冥王マツタケ（模様 3段目●1以上）×9（完全成熟で 4/25(木)）"],"m":520},
+{"y":1,"mo":4,"d":"4/22","w":"月","tags":["畑"],"a":["収穫 キャベツ（甘味・糖度 +100）×1（種 +3）","植える キャベツ（甘味・糖度 +100）×3（完全成熟で 4/25(木)）"],"m":520},
+{"y":1,"mo":4,"d":"4/25","w":"木","tags":["畑"],"a":["収穫 冥王マツタケ（模様 3段目●1以上）×9（種 +27）","収穫 キャベツ（甘味・糖度 +100）×3（種 +9）","植える 冥王マツタケ（模様 3段目●1以上）×9（完全成熟で 5/3(水)）"],"m":520},
+{"y":1,"mo":5,"d":"5/1","w":"月","tags":["畑","交配"],"a":["目的 土星ナス¦穴ホウレン草 × 星カブ を交配","目的 土星ナス（栄養の因子●6）¦土星ナス を属性上げ（3回、相手 平凡レンコン×3）","目的 キャベツ（糖度 2段目●8）¦キャベツ（甘味・糖度 +100） を属性上げ（5回、相手 平凡レンコン×5）¦作っては掛ける：糖度強化種Lv1（キャベツから、見込み3個）","目的 コンブ（風味 1段目●6）¦月面コンブ を属性上げ（3回、相手 シマイモ×4）","目的 真空ワカメ（形状 1段目●6）¦真空ワカメ を属性上げ（3回、相手 シマイモ×4）","植える キャベツ（糖度 2段目●8）×1（完全成熟で 5/7(日)）","植える コンブ（風味 1段目●6）×1（完全成熟で 5/7(日)）","植える 真空ワカメ（形状 1段目●6）×1（完全成熟で 5/7(日)）"],"m":520},
+{"y":1,"mo":5,"d":"5/3","w":"水","tags":["畑"],"a":["収穫 冥王マツタケ（模様 3段目●1以上）×9（種 +27）","植える 土星ナス（栄養の因子●6）×1（完全成熟で 5/7(日)）"],"m":520},
+{"y":1,"mo":5,"d":"5/7","w":"日","tags":["畑"],"a":["収穫 キャベツ（糖度 2段目●8）×1（種 +3）","収穫 コンブ（風味 1段目●6）×1（種 +3）","収穫 真空ワカメ（形状 1段目●6）×1（種 +3）","収穫 土星ナス（栄養の因子●6）×1（種 +3）","植える キャベツ（糖度 2段目●8）×3（完全成熟で 5/13(土)）","植える コンブ（風味 1段目●6）×3（完全成熟で 5/13(土)）","植える 真空ワカメ（形状 1段目●6）×3（完全成熟で 5/13(土)）","植える 土星ナス（栄養の因子●6）×3（完全成熟で 5/13(土)）"],"m":520},
+{"y":1,"mo":5,"d":"5/13","w":"土","tags":["畑","交配"],"a":["収穫 キャベツ（糖度 2段目●8）×3（種 +9）","収穫 コンブ（風味 1段目●6）×3（種 +9）","収穫 真空ワカメ（形状 1段目●6）×3（種 +9）","収穫 土星ナス（栄養の因子●6）×3（種 +9）","目的 コンブ（うま味）¦コンブ（風味 1段目●6） を属性上げ（3回、相手 コンブ（風味 1段目●6）×3）","目的 真空ワカメ（珍しい形）¦真空ワカメ（形状 1段目●6） を属性上げ（2回、相手 真空ワカメ（形状 1段目●6）×2）","植える コンブ（うま味）×1（完全成熟で 5/19(金)）","植える 真空ワカメ（珍しい形）×1（完全成熟で 5/19(金)）","植える キャベツ（糖度 2段目●8）×3（完全成熟で 5/19(金)）","植える 土星ナス（栄養の因子●6）×3（完全成熟で 5/19(金)）"],"m":520},
+{"y":1,"mo":5,"d":"5/19","w":"金","tags":["畑"],"a":["収穫 コンブ（うま味）×1（種 +3）","収穫 真空ワカメ（珍しい形）×1（種 +3）","収穫 キャベツ（糖度 2段目●8）×3（種 +9）","収穫 土星ナス（栄養の因子●6）×3（種 +9）","植える 超軽量シマイモ×3（完全成熟で 5/25(木)）","植える 土星ナス（栄養の因子●6）×3（完全成熟で 5/25(木)）","植える コンブ（うま味）×3（完全成熟で 5/25(木)）","植える 真空ワカメ（珍しい形）×3（完全成熟で 5/25(木)）"],"m":520},
+{"y":1,"mo":5,"d":"5/25","w":"木","tags":["畑","交配"],"a":["収穫 超軽量シマイモ×3（種 +9）","収穫 土星ナス（栄養の因子●6）×3（種 +9）","収穫 コンブ（うま味）×3（種 +9）","収穫 真空ワカメ（珍しい形）×3（種 +9）","目的 コンブ（風味 3段目●1以上）¦コンブ（うま味） を属性上げ（5回、相手 星カブ×5）¦作っては掛ける：風味強化種Lv1（コンブから、見込み3個）","目的 真空ワカメ（形状 3段目●1以上）¦真空ワカメ（珍しい形） を属性上げ（5回、相手 星カブ×5）¦作っては掛ける：形状強化種Lv1（真空ワカメから、見込み3個）","植える 土星ナス（栄養の因子●6）×9（完全成熟で 6/3(水)）","植える コンブ（風味 3段目●1以上）×1（完全成熟で 6/3(水)）","植える 真空ワカメ（形状 3段目●1以上）×1（完全成熟で 6/3(水)）"],"m":520},
+{"y":1,"mo":6,"d":"6/3","w":"水","tags":["畑"],"a":["収穫 土星ナス（栄養の因子●6）×9（種 +27）","収穫 コンブ（風味 3段目●1以上）×1（種 +3）","収穫 真空ワカメ（形状 3段目●1以上）×1（種 +3）","植える コンブ（風味 3段目●1以上）×3（完全成熟で 6/9(火)）","植える 真空ワカメ（形状 3段目●1以上）×3（完全成熟で 6/9(火)）","植える 土星ナス（栄養の因子●6）×3（完全成熟で 6/9(火)）","植える キャベツ（それなり甘い●6）×3（完全成熟で 6/9(火)）"],"m":520},
+{"y":1,"mo":6,"d":"6/9","w":"火","tags":["畑"],"a":["収穫 コンブ（風味 3段目●1以上）×3（種 +9）","収穫 真空ワカメ（形状 3段目●1以上）×3（種 +9）","収穫 土星ナス（栄養の因子●6）×3（種 +9）","収穫 キャベツ（それなり甘い●6）×3（種 +9）","植える コンブ（風味 3段目●1以上）×8（完全成熟で 6/15(月)）","植える 真空ワカメ（形状 3段目●1以上）×4（完全成熟で 6/15(月)）"],"m":520},
+{"y":1,"mo":6,"d":"6/15","w":"月","tags":["畑","罠"],"a":[{"t":"収穫したら罠を外し、超速成を A・B・C 科2マスずつ（畑1の6マスだけ）植えて食べさせる（A：透明キャベツ・ホウレン草、B：シマイモ、C：土星ナス）。ゴールデンが出たら、すぐ風船に戻す"},"収穫 コンブ（風味 3段目●1以上）×8（種 +24）","収穫 真空ワカメ（形状 3段目●1以上）×4（種 +12）"],"m":520},
+{"y":1,"mo":6,"d":"6/21","w":"日","tags":["罠"],"a":[{"t":"食べさせ用の超速成を A・B・C 科2マスずつ（畑1の6マスだけ）植え直す（ゴールデンが出ていなければ）"}],"m":520},
+{"y":2,"mo":1,"d":"1/1","w":"月","tags":["セーブ","畑","交配","売る","罠"],"a":[{"s":"交配の前にセーブする"},"野菜を全部売る","買う（8,500z）：3マス扇風機1台、良質エサ1個、カカシ3体",{"t":"植える前に、3マス扇風機の川流しにする（3/7 まで）。パンチングマシンにしていても必ず替える（芸術点が 143 のままだとパセリが負ける）","g":"F3"},{"t":"風船が突破されたら、風船サービス装置を強力ジャンプ台（左下向き）に替える","g":"F3J"},"目的 イチゴブドウ×2¦砲丸ピーチ × ロウソクコーン を交配","目的 イチゴブドウ（うっとり甘味）×2¦イチゴブドウ を1つずつ属性上げ（1回ずつ、相手 キャベツ（糖度 2段目●8））","目的 ウキウキパセリ¦電灯キューリ × 星カブ を交配","目的 パセリ（アートな模様）¦ウキウキパセリ を属性上げ（1回、相手 冥王マツタケ（模様 3段目●1以上））","植える イチゴブドウ（うっとり甘味）×2（完全成熟で 1/7(日)）","植える パセリ（アートな模様）×1（完全成熟で 1/7(日)）","植える キャベツ（糖度 2段目●8）×1（完全成熟で 1/7(日)）"],"m":95000},
+{"y":2,"mo":1,"d":"1/7","w":"日","tags":["畑","外出","改造","コンクール","罠"],"a":["収穫 イチゴブドウ（うっとり甘味）×2（種 +6）","収穫 パセリ（アートな模様）×1（種 +3）","収穫 キャベツ（糖度 2段目●8）×1（種 +3）","コンクール 初級透明キャベツ：キャベツ（糖度 2段目●8）","コンクール 初級ウキウキパセリ：パセリ（アートな模様）","改造 交配マシン4号（30,000z）",{"t":"コンクールから帰ったら罠を外し、超速成を A・B・C 科2マスずつ（畑1の6マスだけ）植えて食べさせる（A：透明キャベツ・ホウレン草、B：シマイモ、C：土星ナス）。ゴールデンが出たら、すぐ3マス扇風機の川流しに戻す"}],"m":78000},
+{"y":2,"mo":1,"d":"1/14","w":"日","tags":["外出","改造","コンクール","罠"],"a":["コンクール 初級イチゴブドウ：イチゴブドウ（うっとり甘味）","コンクール 上級イチゴブドウ：イチゴブドウ（うっとり甘味）","改造 交配マシン・ファイナル（50,000z）",{"t":"コンクールから帰ったら、食べさせ用の超速成を A・B・C 科2マスずつ（畑1の6マスだけ）植え直す（ゴールデンが出ていなければ）"}],"m":47000},
+{"y":2,"mo":1,"d":"1/21","w":"日","tags":["外出","改造","罠"],"a":["買う（20,000z）：スイカタワー×1","改造 ピート・スーパー（10,000z）",{"t":"ソンブレロ市から帰ったら、食べさせ用の超速成を A・B・C 科2マスずつ（畑1の6マスだけ）植え直す（ゴールデンが出ていなければ）"}],"m":17000},
+{"y":2,"mo":1,"d":"1/28","w":"日","tags":["外出","改造","罠"],"a":["改造 ピート・ファイナル（15,000z）",{"t":"ソンブレロ市から帰ったら、3マス扇風機の川流しに戻す（2/1 に貴婦人などを植えるため）"}],"m":2000},
+{"y":2,"mo":2,"d":"2/1","w":"月","tags":["畑","交配"],"a":["目的 土星ナス（栄養 1段目●8、健康になる）¦土星ナス（栄養の因子●6） を属性上げ（2回、相手 平凡レンコン×2）","目的 銀河ドリアン×2¦コンブ（うま味） × 冥王マツタケ（模様 3段目●1以上） を交配｜コンブも冥王マツタケも、どの段の種でもよい","目的 銀河ドリアン（栄養 2段目●1 解毒作用）¦銀河ドリアン を属性上げ（1回、相手 土星ナス（栄養 1段目●8、健康になる））","目的 カブトタケノコ×2¦火星カボチャ × トゲガーリック を交配","目的 カブトタケノコ（ほとんど空気）×2¦カブトタケノコ を1つずつ属性上げ（1回ずつ、相手 超軽量シマイモ）","目的 スイカタワー（あまあまあま）¦スイカタワー を属性上げ（1回、相手 キャベツ（糖度 2段目●8））","目的 貴婦人（トレビアーン）¦銀河ドリアン × コンブ（風味 3段目●1以上） を交配｜トレビアーン（風味 +6）が出たら YES","目的 貴婦人（風味・形状MAX）¦貴婦人（トレビアーン） を属性上げ（1回、相手 真空ワカメ（形状 3段目●1以上））｜魅惑の形状とトレビアーンが出たら YES¦作っては掛ける：形状強化種Lv2（真空ワカメから、見込み4個）¦作っては掛ける：風味強化種Lv2（コンブから、見込み4個）","植える 貴婦人（風味・形状MAX）×1（完全成熟で 2/14(日)）","植える カブトタケノコ（ほとんど空気）×2（完全成熟で 2/14(日)）"],"m":2000},
+{"y":2,"mo":2,"d":"2/7","w":"日","tags":["畑"],"a":["植える スイカタワー（あまあまあま）×1（完全成熟で 2/17(水)）","植える 銀河ドリアン（栄養 2段目●1 解毒作用）×1（完全成熟で 2/17(水)）"],"m":2000},
+{"y":2,"mo":2,"d":"2/14","w":"日","tags":["畑"],"a":["収穫 貴婦人（風味・形状MAX）×1（種 +3）","収穫 カブトタケノコ（ほとんど空気）×2（種 +6）","植える カブトタケノコ（ほとんど空気）×5（完全成熟で 2/27(土)）","植える 貴婦人（風味・形状MAX）×1（完全成熟で 2/27(土)）"],"m":2000},
+{"y":2,"mo":2,"d":"2/17","w":"水","tags":["畑"],"a":["収穫 スイカタワー（あまあまあま）×1（種 +3）","収穫 銀河ドリアン（栄養 2段目●1 解毒作用）×1（種 +3）","植える スイカタワー（あまあまあま）×3（完全成熟で 2/27(土)）","植える 銀河ドリアン（栄養 2段目●1 解毒作用）×3（完全成熟で 2/27(土)）"],"m":2000},
+{"y":2,"mo":2,"d":"2/27","w":"土","tags":["畑"],"a":["収穫 カブトタケノコ（ほとんど空気）×5（種 +15）","収穫 貴婦人（風味・形状MAX）×1（種 +3）","収穫 スイカタワー（あまあまあま）×3（種 +9）","収穫 銀河ドリアン（栄養 2段目●1 解毒作用）×3（種 +9）","植える スイカタワー（あまあまあま）×4（完全成熟で 3/7(日)）","植える 銀河ドリアン（栄養 2段目●1 解毒作用）×6（完全成熟で 3/7(日)）"],"m":2000},
+{"y":2,"mo":2,"d":"2/28","w":"日","tags":["外出","コンクール"],"a":["コンクール 中級貴婦人：貴婦人（風味・形状MAX）",{"n":"注意：コンクールの選択肢を間違えないこと（一覧の上にある中級スイカタワーではなく、中級貴婦人）"}],"m":35000},
+{"y":2,"mo":3,"d":"3/7","w":"日","tags":["畑","交配","罠"],"a":[{"t":"1月にゴールデンが出ていなければ、仕上げのあと罠を外し、超速成を A・B・C 科2マスずつ（畑1の6マスだけ）植えて食べさせる（A：透明キャベツ・ホウレン草、B：シマイモ、C：土星ナス。A が足りなければシマイモ）。日曜に植え直す。5/22 の夜までに出なければ 6/13 の夜まで続け、6/13 の夜に無ければ再走。出たら、すぐ3マス扇風機の川流しに戻す","g":"F3"},"収穫 スイカタワー（あまあまあま）×4（種 +12）","収穫 銀河ドリアン（栄養 2段目●1 解毒作用）×6（種 +18）","目的 水晶ハーブ¦貴婦人（風味・形状MAX） × 銀河ドリアン（栄養 2段目●1 解毒作用） を交配｜解毒作用が出たら YES","目的 アストロキング¦水晶ハーブ × 貴婦人（風味・形状MAX） を交配｜解毒作用・神秘の形状・魅惑の風味が出たら YES","目的 アストロキング（強化後）¦作っては掛ける：重さ強化種Lv-3（カブトタケノコから、見込み7個）¦作っては掛ける：糖度強化種Lv3（スイカタワーから、見込み8個）¦作っては掛ける：風味強化種Lv2（コンブから、見込み3個）¦作っては掛ける：栄養強化種Lv2（銀河ドリアンから、見込み8個）¦作っては掛ける：模様強化種Lv3（冥王マツタケから、見込み8個）"],"m":35000},
+{"y":2,"mo":5,"d":"5/28","w":"日","tags":["外出","売る","コンクール"],"a":["コンクール 上級貴婦人：貴婦人（風味・形状MAX）","種屋で野菜を全部売る","買う（100,000z）：匂い強化種Lv1×5、音色強化種Lv1×5",{"n":"お金が残れば高級3マス扇風機を1台（10000z）"}],"m":11490},
+{"y":2,"mo":6,"d":"6/14","w":"日","tags":["畑","交配","罠"],"a":[{"t":"植える前に、3マス扇風機の川流しに戻す。高級3マス扇風機を買えていれば足す","g":"F3"},"目的 ゴールデンアストロキング¦アストロキング（強化後） に 匂い強化種Lv1×5 を掛ける¦音色強化種Lv1×5 を掛ける¦ゴールデン強化種×1 を掛ける","植える ゴールデンアストロキング×1（成熟で 6/24(水)）",{"n":"できあがり予定："},{"n":"大きさ +40、重さ −200"},{"n":"模様・栄養・糖度・形状・風味 +300"},{"n":"食感 +40、匂い・音色 +100、ゴールデン"},{"n":"重さ以外 合計 1,780"}],"m":11490},
+{"y":2,"mo":6,"d":"6/24","w":"水","tags":["畑"],"a":["収穫 ゴールデンアストロキング×1（成熟、種なし）"],"m":11490},
+{"y":3,"mo":1,"d":"1/1","w":"月","tags":["外出","コンクール"],"a":["コンクール 全宇宙野菜コンクール：ゴールデンアストロキング"],"m":60490}];
+
+// マイルストーン：年・日・できていること
+const MS = [];
+
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const yen = n => n.toLocaleString("ja-JP") + "z";
+
+// マイルストーン
+{
+  let html = "", last = 0;
+  for (const [y, d, w] of MS) {
+    if (y !== last) { html += `<li class="ms yr">${y}年目</li>`; last = y; }
+    const day = DAYS.find(x => x.y === y && x.d === d);
+    html += `<li class="ms"><span class="d">${d}</span><span class="w">${esc(w)}</span><span class="chk">${day ? "終わり " + yen(day.m) : ""}</span></li>`;
+  }
+  document.getElementById("mss").innerHTML = html;
+}
+
+// 月の切り替え
+const bar = document.getElementById("bar");
+{
+  let html = "", lastY = 0;
+  for (const k of [...new Set(DAYS.map(x => `${x.y}-${x.mo}`))]) {
+    const [y, mo] = k.split("-");
+    if (+y !== lastY) { html += `<span class="yl">${y}年</span>`; lastY = +y; }
+    html += `<button type="button" data-m="${k}" aria-pressed="false">${mo}月</button>`;
+  }
+  bar.insertAdjacentHTML("beforeend", html + `<span class="sp"></span><button type="button" id="quiz" aria-pressed="false">覚える</button>`);
+}
+
+const box = document.getElementById("days");
+const tagClass = t => t === "セーブ" ? "save" : t === "外出" ? "go" : t === "改造" || t === "コンクール" ? "up" : t === "罠" ? "trap" : "";
+let month = "";
+
+// 罠の配置。cells は [列, 行, 字]。列は左から、行は上（畑の側）から 1〜9
+const TRAPS = {
+  K3: { name: "カカシ3体", when: "1年 1/10〜2/14", src: "",
+    legend: "カ＝カカシ", cells: [[3,2,"カ"],[7,2,"カ"],[5,3,"カ"]] },
+  KR: { name: "川流し（こんにゃく犬さんの形）", when: "1年 2/15〜2/21。2/21 からは、風船が突破されたら", src: "",
+    legend: "穴＝浅底落とし穴、跳＝ジャンプ台、扇＝2マス扇風機、カ＝カカシ、エ＝基本エサ",
+    cells: [[5,4,"穴"],[4,5,"穴"],[5,5,"穴"],[4,7,"跳"],[3,8,"跳"],[6,7,"扇"],[2,8,"扇"],[7,8,"カ"],[7,9,"カ"],[3,9,"カ"],[5,6,"エ"]] },
+  KJ: { name: "強力ジャンプ台と風船の川流し", when: "1年。扇風機の川流しが効かなくなったら。強力ジャンプ台は 1800z、桂馬ジャンプ台は 2/22 から 700z", src: "",
+    legend: "穴＝浅底落とし穴、強＝強力ジャンプ台（左下向き、無ければジャンプ台）、桂＝桂馬ジャンプ台、風＝風船サービス装置、カ＝カカシ",
+    cells: [[5,5,"穴"],[5,6,"強"],[4,7,"強"],[3,8,"強"],[2,9,"桂"],[6,7,"風"],[7,8,"カ"],[7,9,"カ"]] },
+  B: { name: "風船", when: "1年 2/21〜（突破されるまで置いたまま）", src: "",
+    legend: "風＝風船サービス装置、穴＝浅底落とし穴", cells: [[5,7,"風"],[5,6,"穴"],[3,3,"穴"],[4,3,"穴"],[5,3,"穴"],[6,3,"穴"],[7,3,"穴"]] },
+  PM: { name: "パンチングマシン（風船の代わり）", when: "風船を迂回されたら、風船の位置に置く。3/28 にパンタロン町で先に買っておく（羽15枚の風船をトラップ屋で売って代金に充てる）", src: "",
+    legend: "拳＝パンチングマシン、穴＝浅底落とし穴", cells: [[5,7,"拳"],[5,6,"穴"],[3,3,"穴"],[4,3,"穴"],[5,3,"穴"],[6,3,"穴"],[7,3,"穴"]] },
+  F3: { name: "3マス扇風機の川流し", when: "2年 1/1〜3/7、ゴールデンが出たら（出なければ 6/14 から）、6/14〜（アストロキングを守る）", src: "",
+    legend: "↓＝3マス扇風機（下向き）、エ＝良質エサ、風＝風船サービス装置、穴＝浅底落とし穴、カ＝カカシ",
+    cells: [[4,7,"↓"],[3,8,"エ"],[5,7,"風"],[6,7,"穴"],[5,6,"穴"],[3,9,"カ"],[7,8,"カ"],[7,9,"カ"]] },
+  F3J: { name: "3マス扇風機の川流し（風船が突破されたら）", when: "2年 1/1〜。3マス扇風機の川流しの風船が突破されたら、風船サービス装置を強力ジャンプ台に替える", src: "",
+    legend: "↓＝3マス扇風機（下向き）、エ＝良質エサ、強＝強力ジャンプ台（左下向き）、穴＝浅底落とし穴、カ＝カカシ",
+    cells: [[4,7,"↓"],[3,8,"エ"],[5,7,"強"],[6,7,"穴"],[5,6,"穴"],[3,9,"カ"],[7,8,"カ"],[7,9,"カ"]] },
+};
+const TRAPS_TODO = [
+  ["ピートの初期配置", "1年 1/8〜1/9", ""],
+];
+function trapGrid(id) {
+  const t = TRAPS[id]; if (!t) return "";
+  const at = {}; for (const [c, r, ch] of t.cells) at[c + ":" + r] = ch;
+  let h = "";
+  for (let r = 1; r <= 9; r++) for (let c = 1; c <= 9; c++) {
+    const ch = at[c + ":" + r], gate = (r <= 2 || r >= 8) && c >= 4 && c <= 6;
+    h += `<span class="${ch ? "it" : gate ? "gate" : ""}">${ch ? esc(ch) : gate ? (r <= 2 ? "出" : "入") : ""}</span>`;
+  }
+  return `<div class="tg" role="img" aria-label="${esc(t.name)}の配置">${h}</div><div class="tgcap">${esc(t.legend)}</div>`;
+}
+{
+  let h = "";
+  for (const [n, w, src] of TRAPS_TODO) h += `<div class="trapcard"><h3>${esc(n)}</h3><p>${esc(w)}</p><p>${esc(src)}</p></div>`;
+  for (const t of Object.values(TRAPS)) h += `<div class="trapcard"><h3>${esc(t.name)}</h3><p>${esc(t.when)}</p>${trapGrid(Object.keys(TRAPS).find(k => TRAPS[k] === t))}<p>${esc(t.src)}</p></div>`;
+}
+
+// 手順の並びを、同じ種類ごとにまとめて表示する（データはそのまま）
+const KIND = x => /^収穫 /.test(x) ? "収穫" : /^植える /.test(x) ? "植える" : /^(交配|属性上げ|強化種づくり|強化種を掛ける|目的) /.test(x) ? "交配" : "";
+function cross(x) {
+  if (x.startsWith("目的 ")) { const [g, ...st] = x.slice(3).split("¦"); return esc(g) + st.map(s => { const [h, ...t] = s.split("｜"); return `<div class="st">・${esc(h)}</div>` + t.map(n => `<div class="pc">${esc(n)}</div>`).join(""); }).join(""); }
+  if (x.includes("｜")) { const [h, ...t] = x.split("｜"); return cross(h) + t.map(s => `<div class="pc">${esc(s)}</div>`).join(""); }
+  let m;
+  if ((m = /^交配 (.+) → (.+)$/.exec(x))) return `${esc(m[2])} <span class="sub">← ${esc(m[1])}</span>`;
+  if ((m = /^属性上げ (.+) → (.+?)（(\d+)段、相手 (.+)）×(\d+)$/.exec(x))) return `${esc(m[2])}×${m[5]} <span class="sub">← ${esc(m[1])} を1つずつ属性上げ（${m[3]}回ずつ、相手 ${esc(m[4].replace(/×\d+$/, ""))}）</span>`;
+  if ((m = /^属性上げ (.+) → (.+?)（(\d+)段、相手 (.+)）$/.exec(x))) return `${esc(m[2])} <span class="sub">← ${esc(m[1])} を属性上げ（${m[3]}回、相手 ${esc(m[4].replace(/×1$/, ""))}）</span>`;
+  if ((m = /^強化種づくり (.+) → (.+)$/.exec(x))) return `${esc(m[2])} <span class="sub">← ${esc(m[1])}（強化種づくり）</span>`;
+  if ((m = /^強化種を掛ける (.+) ＋ (.+) → (.+)$/.exec(x))) return `${esc(m[3])} <span class="sub">← ${esc(m[1])} に ${esc(m[2])} を掛ける</span>`;
+  return esc(x);
+}
+function buildActs(list) {
+  const out = [];
+  for (const x of list) {
+    const k = typeof x === "string" ? KIND(x) : "";
+    const last = out[out.length - 1];
+    if (k && last && last.k === k) last.items.push(x); else out.push({ k, items: [x] });
+  }
+  return out.map(({ k, items }) => {
+    if (!k) return items.map(x => typeof x === "string" ? `<li>${esc(x).replace(/\n/g, "<br>")}</li>`  : x.e ? `<li class="em">${esc(x.e)}</li>`: x.s ? `<li class="save">${esc(x.s)}</li>` : x.t ? `<li class="trap">${esc(x.t)}${x.g ? trapGrid(x.g) : ""}</li>` : `<li class="note">${esc(x.n)}</li>`).join("");
+    if (k === "収穫") {
+      const v = items.map(x => x.replace(/^収穫 /, "").replace(/（種 \+\d+）/, "").replace("（成熟、種なし）", "（種なし）"));
+      return `<li class="grp"><span class="lab">収穫</span><span>${esc(v.join("、")).replace(/（種なし）/g, '<span class="nos">（種なし）</span>')}</span></li>`;
+    }
+    if (k === "植える") {
+      const by = {};
+      for (const x of items) { const m = /^植える (.+?)（(完全成熟|成熟)で (.+)）$/.exec(x); const key = m ? `${m[3]}${m[2] === "成熟" ? "（成熟で、種なし）" : ""}` : ""; (by[key] ??= []).push(m ? m[1] : x.replace(/^植える /, "")); }
+      const lines = Object.entries(by).map(([w, v]) => `${v.map(esc).join("<br>")}${w ? ` <span class="when">→ ${esc(w).replace("（成熟で、種なし）", '<span class="nos">（成熟で、種なし）</span>')} に収穫</span>` : ""}`);
+      return `<li class="grp"><span class="lab">植える</span><span>${lines.join("<br>")}</span></li>`;
+    }
+    return `<li class="grp"><span class="lab">交配</span><ol class="xs">${items.map(x => `<li>${cross(x)}</li>`).join("")}</ol></li>`;
+  }).join("");
+}
+
+function render() {
+  let html = "", last = "";
+  for (const day of DAYS) {
+    const k = `${day.y}-${day.mo}`;
+    if (month && k !== month) continue;
+    if (k !== last) { html += `<div class="month-h">${day.y}年 ${day.mo}月</div>`; last = k; }
+    const acts = buildActs(day.a);
+    html += `<article class="day" tabindex="0">
+      <div><div class="date">${day.d}</div><div class="dow${day.w === "日" ? " sun" : ""}">${day.w}曜</div></div>
+      <div class="main">
+        <div class="tags">${day.tags.map(t => `<span class="tag ${tagClass(t)}">${t}</span>`).join("")}</div>
+        <ul class="acts">${acts}</ul>
+        <div class="hint">タップして確かめる</div>
+      </div>
+      <div class="money">その日の終わり ${yen(day.m)}</div>
+    </article>`;
+  }
+  box.innerHTML = html;
+}
+
+function setMonth(k) {
+  month = k;
+  bar.querySelectorAll("button[data-m]").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.m === k)));
+  render();
+  try { localStorage.setItem("month-alt", k); } catch (e) {}
+}
+bar.querySelectorAll("button[data-m]").forEach(b => b.addEventListener("click", () => setMonth(b.dataset.m)));
+
+const quizBtn = document.getElementById("quiz");
+function setQuiz(on) {
+  document.body.classList.toggle("quiz", on);
+  quizBtn.setAttribute("aria-pressed", String(on));
+  quizBtn.textContent = on ? "全部見る" : "覚える";
+  document.querySelectorAll(".day.open").forEach(d => d.classList.remove("open"));
+  try { localStorage.setItem("quiz-alt", on ? "1" : "0"); } catch (e) {}
+}
+quizBtn.addEventListener("click", () => setQuiz(!document.body.classList.contains("quiz")));
+
+const toggleOpen = el => { if (document.body.classList.contains("quiz")) el.classList.toggle("open"); };
+box.addEventListener("click", e => { const d = e.target.closest(".day"); if (d) toggleOpen(d); });
+box.addEventListener("keydown", e => { const d = e.target.closest(".day"); if (d && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); toggleOpen(d); } });
+
+render();
+try {
+  const k = localStorage.getItem("month-alt") || "";
+  if (k && bar.querySelector(`button[data-m="${k}"]`)) setMonth(k);
+  if (localStorage.getItem("quiz-alt") === "1") setQuiz(true);
+} catch (e) {}
+
+// 左の罠：1年 2/21〜は風船。突破されたときの形を順に出しておく
+{ const SIDE = [["PM", "2", "3/28 に羽15枚で風船を交換し、トラップ屋で売って（5000z）パンチングマシンを買う（6000z）。置いた風船はそのままで、迂回されたら替える"], ["KR", "3", "パンチングマシンも突破されたとき。3/28 までに風船が突破されたときもこれ"], ["KJ", "4", "扇風機の川流しが効かなくなったら（すぐ風に強くなる）。かなり長持ちする。残り電力 85"]];
+  let h = '<h2>罠の切り替え</h2><p class="lead2">1年 2/21〜。1番目は風船（突破されるまで置いたまま）</p>';
+  for (const [id, no, when] of SIDE) h += `<h3><span class="no">${no}</span>${esc(TRAPS[id].name)}</h3><p class="when">${esc(when)}</p>${trapGrid(id)}`;
+  document.getElementById("trapside").innerHTML = h;
+  const b = document.getElementById("trapbtn"), p = document.getElementById("trapside");
+  b.addEventListener("click", () => { const o = p.classList.toggle("open"); b.setAttribute("aria-expanded", String(o)); }); }
+</script>
