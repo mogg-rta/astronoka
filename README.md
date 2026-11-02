@@ -10,7 +10,8 @@ PS1 の「アストロノーカ」（1998年、エニックス）の RTA（Any%�
 | 走った日 | 2026-11-01 |
 | 走者 | mogg |
 | 環境 | PS3（CECH-4200 番台）、ゲームアーカイブス版 |
-| speedrun.com | 申請中（動画とあわせて、決まりしだい載せます） |
+| 動画 | https://www.youtube.com/watch?v=7I9aZLsKVHM |
+| speedrun.com | 申請中 |
 
 | 区間 | 通し | 区間タイム |
 | --- | --- | --- |
